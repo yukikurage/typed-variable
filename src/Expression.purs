@@ -4,6 +4,8 @@ module Expression
   , Expression
   , define
   , iliftA2
+  , ipure2
+  , ipure3
   , read
   , run
   , runExpression
@@ -12,7 +14,7 @@ module Expression
 
 import Prelude
 
-import Control.Applicative.Indexed (class IxApplicative, iapply, imap)
+import Control.Applicative.Indexed (class IxApplicative, iapply, imap, ipure)
 import Control.Apply.Indexed (class IxApply)
 import Control.Bind.Indexed (class IxBind)
 import Control.Monad.Indexed (class IxMonad)
@@ -20,16 +22,41 @@ import Data.Functor.Indexed (class IxFunctor)
 import Data.Symbol (class IsSymbol)
 import Prim.Row (class Cons, class Lacks)
 import Record (get, insert, set)
-import Type.Proxy (Proxy)
+import Type.Proxy (Proxy(..))
 
-data Expression p q a = Expression (Record p -> { variables :: Record q, result :: a })
+data Expression p q a = Expression
+  (Record p -> { variables :: Record q, result :: a })
+
+type YFunction p q r s x y = Expression p q (x -> Expression r s y)
+
+yapply
+  :: Expression p q (x -> Expression r s y)
+  -> Expression p t x
+  -> Expression p s y
 
 --------------
 -- External --
 --------------
 
-iliftA2 :: forall f x y z p q r. IxApplicative f => (x -> y -> z) -> f p q x -> f q r y -> f p r z
+iliftA2
+  :: forall f x y z p q r
+   . IxApplicative f
+  => (x -> y -> z)
+  -> f p q x
+  -> f q r y
+  -> f p r z
 iliftA2 f x y = f `imap` x `iapply` y
+
+ipure2 :: forall p x y f. IxApplicative f => (x -> y) -> x -> f p p y
+ipure2 f = ipure <<< f
+
+ipure3
+  :: forall p q x y z f
+   . IxApplicative f
+  => (x -> y -> z)
+  -> x
+  -> f p p (y -> f q q z)
+ipure3 f = ipure <<< ipure2 <<< f
 
 instance IxFunctor Expression where
   imap f (Expression g) = Expression \r ->
@@ -83,7 +110,8 @@ define s (Expression f) = Expression \r ->
 
 infix 2 define as :=
 
-read :: forall p q x s. Cons s x p q => IsSymbol s => Proxy s -> Expression q q x
+read
+  :: forall p q x s. Cons s x p q => IsSymbol s => Proxy s -> Expression q q x
 read proxy = Expression \variables -> { variables, result: get proxy variables }
 
 write
@@ -103,10 +131,11 @@ infix 2 write as @=
 
 run
   :: forall p q r x
-   . Expression p q (Expression q r x)
-  -> Expression p r x
+   . Expression p q (Expression () r x)
+  -> Expression p q x
 run (Expression f) = Expression \r ->
   let
     { variables, result: Expression g } = f r
+    { result } = g {}
   in
-    g variables
+    { variables, result }
