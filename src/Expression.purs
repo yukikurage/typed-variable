@@ -1,14 +1,17 @@
 module Expression
-  ( (:=)
+  ( (++>)
+  , (:=)
   , (@=)
-  , Expression
+  , Expression(..)
   , define
   , iliftA2
+  , introduce
   , ipure2
   , ipure3
   , read
   , run
   , runExpression
+  , unite
   , write
   ) where
 
@@ -26,13 +29,6 @@ import Type.Proxy (Proxy(..))
 
 data Expression p q a = Expression
   (Record p -> { variables :: Record q, result :: a })
-
-type YFunction p q r s x y = Expression p q (x -> Expression r s y)
-
-yapply
-  :: Expression p q (x -> Expression r s y)
-  -> Expression p t x
-  -> Expression p s y
 
 --------------
 -- External --
@@ -139,3 +135,37 @@ run (Expression f) = Expression \r ->
     { result } = g {}
   in
     { variables, result }
+
+introduce
+  :: forall a p q r s x
+   . IsSymbol a
+  => Cons a x s p
+  => Cons a x q r
+  => Lacks a q
+  => Proxy a
+  -> Expression p p (Expression q r Unit)
+introduce s = Expression \p ->
+  let
+    expression = Expression \q ->
+      { variables: insert s (get s p) q, result: unit }
+  in
+    { variables: p, result: expression }
+
+unite
+  :: forall p q r s t u x y
+   . Expression p q (Expression s t y)
+  -> Expression q r (Expression t u x)
+  -> Expression p r (Expression s u x)
+unite (Expression f) (Expression g) = Expression \p ->
+  let
+    { variables: q, result: Expression h } = f p
+    { variables: r, result: Expression i } = g q
+    expression = Expression \s ->
+      let
+        { variables: t } = h s
+      in
+        i t
+  in
+    { variables: r, result: expression }
+
+infixl 3 unite as ++>
