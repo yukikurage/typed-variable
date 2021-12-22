@@ -109,9 +109,5 @@ read (Y f) = Y \p ->
   in
     get a p
 
-run :: forall p x. Y p (Y () x) -> Y p x
-run (Y f) = Y \p ->
-  let
-    Y h = f p
-  in
-    h {}
+run :: forall p x. Y p (Y () x -> x)
+run = Y \_ -> \(Y f) -> f {}

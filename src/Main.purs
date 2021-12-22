@@ -37,4 +37,4 @@ test =
   _a := pure (_x := _2)
     $ _b := pure (_g := _y \-> _add @@ read _x @@ read _y)
     $ _c := pure (read _g @@ read _x)
-    $ run (read _a $$ read _b $$ read _c)
+    $ run @@ (read _a @@ (read _b @@ read _c))
