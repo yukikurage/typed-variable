@@ -22,8 +22,7 @@ $ read x := 1
 $ read y
 ```
 
-PureScript に内蔵されている
-一種の言語内 DSL
+PureScript に埋め込まれた一種の言語内 DSL
 
 ---
 
