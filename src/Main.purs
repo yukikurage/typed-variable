@@ -2,37 +2,39 @@ module Main where
 
 import Prelude
 
-import Control.Applicative.Indexed (iapply, imap, ipure)
-import Control.Bind.Indexed ((=<<:))
-import Control.Monad.Indexed.Qualified as Ix
-import Data.Array (range)
 import Effect (Effect)
 import Effect.Class.Console (logShow)
-import Expression (Expression(..), iliftA2, introduce, ipure3, read, run, runExpression, (++>), (:=), (@=))
 import Type.Proxy (Proxy(..))
+import Y (Y, read, run, runY, ($$), (:=), (@=), (@@), (\->))
 
 main :: Effect Unit
-main = logShow $ runExpression testExpr
+main = logShow $ runY {} test
 
-_x = Proxy :: Proxy "x"
-_y = Proxy :: Proxy "y"
-_z = Proxy :: Proxy "z"
-_f = Proxy :: Proxy "f"
-_g = Proxy :: Proxy "g"
-_h = Proxy :: Proxy "h"
+_x = pure Proxy :: forall m. Applicative m => m (Proxy "x")
+_y = pure Proxy :: forall m. Applicative m => m (Proxy "y")
+_z = pure Proxy :: forall m. Applicative m => m (Proxy "z")
+_f = pure Proxy :: forall m. Applicative m => m (Proxy "f")
+_g = pure Proxy :: forall m. Applicative m => m (Proxy "g")
+_h = pure Proxy :: forall m. Applicative m => m (Proxy "h")
 
-_a = Proxy :: Proxy "a"
+_a = pure Proxy :: forall m. Applicative m => m (Proxy "a")
+_b = pure Proxy :: forall m. Applicative m => m (Proxy "b")
+_c = pure Proxy :: forall m. Applicative m => m (Proxy "c")
 
-_1 = ipure 1
+_1 :: forall t63. Applicative t63 => t63 Int
+_1 = pure 1
 
-_2 = ipure 2
+_2 :: forall t60. Applicative t60 => t60 Int
+_2 = pure 2
 
-_3 = ipure 3
+_3 :: forall t57. Applicative t57 => t57 Int
+_3 = pure 3
 
-_add = ipure $ add `imap` read _x `iapply` read _y
+_add = pure add
 
-testExpr :: Expression () _ Int
-testExpr = Ix.do
-  _x := _2
-  _a := introduce _x ++> ipure (_y := _1) ++> _add
-  run (read _a)
+test :: Y () Int
+test =
+  _a := pure (_x := _2)
+    $ _b := pure (_g := _y \-> _add @@ read _x @@ read _y)
+    $ _c := pure (read _g @@ read _x)
+    $ run (read _a $$ read _b $$ read _c)
